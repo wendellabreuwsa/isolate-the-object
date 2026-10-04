@@ -49,10 +49,10 @@ function fromHex(value: string): BackgroundColor {
 function detectBackground(context: CanvasRenderingContext2D, width: number, height: number) {
   const insetX = Math.min(2, width - 1);
   const insetY = Math.min(2, height - 1);
-  const points = [[insetX, insetY], [width - 1 - insetX, insetY], [insetX, height - 1 - insetY], [width - 1 - insetX, height - 1 - insetY]];
-  const totals = points.reduce((sum, [x, y]) => {
+  const points: Array<[number, number]> = [[insetX, insetY], [width - 1 - insetX, insetY], [insetX, height - 1 - insetY], [width - 1 - insetX, height - 1 - insetY]];
+  const totals = points.reduce<[number, number, number]>((sum, [x, y]) => {
     const pixel = context.getImageData(x, y, 1, 1).data;
-    return [sum[0] + pixel[0], sum[1] + pixel[1], sum[2] + pixel[2]];
+    return [sum[0] + (pixel[0] ?? 0), sum[1] + (pixel[1] ?? 0), sum[2] + (pixel[2] ?? 0)];
   }, [0, 0, 0]);
   return { r: Math.round(totals[0] / 4), g: Math.round(totals[1] / 4), b: Math.round(totals[2] / 4) };
 }
@@ -92,14 +92,18 @@ function BackgroundRemover() {
       const data = imageData.data;
       const fadeRange = Math.max(8, item.tolerance * 0.45);
       for (let index = 0; index < data.length; index += 4) {
+        const red = data[index] ?? 0;
+        const green = data[index + 1] ?? 0;
+        const blue = data[index + 2] ?? 0;
+        const alpha = data[index + 3] ?? 255;
         const distance = Math.sqrt(
-          (data[index] - selectedBackground.r) ** 2 +
-          (data[index + 1] - selectedBackground.g) ** 2 +
-          (data[index + 2] - selectedBackground.b) ** 2,
+          (red - selectedBackground.r) ** 2 +
+          (green - selectedBackground.g) ** 2 +
+          (blue - selectedBackground.b) ** 2,
         );
         if (distance <= item.tolerance) data[index + 3] = 0;
         else if (distance <= item.tolerance + fadeRange) {
-          data[index + 3] = Math.round(data[index + 3] * ((distance - item.tolerance) / fadeRange));
+          data[index + 3] = Math.round(alpha * ((distance - item.tolerance) / fadeRange));
         }
       }
       context.putImageData(imageData, 0, 0);
@@ -126,8 +130,10 @@ function BackgroundRemover() {
       tolerance: 24,
       background: WHITE,
     }));
+    const firstItem = newItems[0];
+    if (!firstItem) return;
     setItems((current) => [...current.filter((item) => !item.isDemo), ...newItems]);
-    setActiveId(newItems[0].id);
+    setActiveId(firstItem.id);
     setView("result");
   };
 
@@ -202,7 +208,7 @@ function BackgroundRemover() {
           <div className="flex h-14 items-center gap-2 border-b border-border px-5"><SlidersHorizontal className="size-4 text-primary" /><h2 className="text-sm font-semibold">Ajustes</h2></div>
           <div className="space-y-7 p-5">
             <div><div className="mb-3 flex items-center justify-between"><label htmlFor="background-color" className="text-sm font-medium">Cor do fundo</label><span className="font-mono text-xs text-muted-foreground">{active ? toHex(active.background).toUpperCase() : "—"}</span></div><label className="flex h-11 cursor-pointer items-center gap-3 rounded-md border border-border bg-background px-3"><input id="background-color" type="color" value={active ? toHex(active.background) : "#ffffff"} disabled={!active} onChange={(event) => updateActive({ background: fromHex(event.target.value) })} className="size-6 cursor-pointer rounded border-0 bg-transparent p-0" /><span className="text-xs text-muted-foreground">Clique para alterar</span></label><p className="mt-2 text-xs leading-relaxed text-muted-foreground">Detectada automaticamente pelos cantos da imagem.</p></div>
-            <div><div className="mb-4 flex items-center justify-between"><label htmlFor="tolerance" className="text-sm font-medium">Tolerância</label><span className="rounded bg-secondary px-2 py-1 font-mono text-xs text-primary">{active?.tolerance ?? 0}</span></div><Slider id="tolerance" min={0} max={120} step={1} value={[active?.tolerance ?? 0]} disabled={!active} onValueChange={([value]) => updateActive({ tolerance: value })} /><div className="mt-2 flex justify-between font-mono text-[10px] text-muted-foreground"><span>PRECISO</span><span>AMPLO</span></div><p className="mt-3 text-xs leading-relaxed text-muted-foreground">Aumente se ainda houver resíduos do fundo. Diminua para preservar detalhes claros.</p></div>
+            <div><div className="mb-4 flex items-center justify-between"><label htmlFor="tolerance" className="text-sm font-medium">Tolerância</label><span className="rounded bg-secondary px-2 py-1 font-mono text-xs text-primary">{active?.tolerance ?? 0}</span></div><Slider id="tolerance" min={0} max={120} step={1} value={[active?.tolerance ?? 0]} disabled={!active} onValueChange={(values) => { const value = values[0]; if (value !== undefined) updateActive({ tolerance: value }); }} /><div className="mt-2 flex justify-between font-mono text-[10px] text-muted-foreground"><span>PRECISO</span><span>AMPLO</span></div><p className="mt-3 text-xs leading-relaxed text-muted-foreground">Aumente se ainda houver resíduos do fundo. Diminua para preservar detalhes claros.</p></div>
             <div className="border-t border-border pt-5"><Button variant="outline" className="w-full" disabled={!active} onClick={() => updateActive({ tolerance: 24, background: WHITE })}><RotateCcw /> Restaurar ajustes</Button></div>
           </div>
           <div className="border-t border-border p-5 lg:absolute lg:bottom-0 lg:w-[300px]"><Button size="lg" className="w-full" disabled={!active} onClick={download}><Download /> Baixar PNG transparente</Button><p className="mt-3 text-center text-[11px] text-muted-foreground">A imagem mantém o tamanho original</p></div>

@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Download, ImagePlus, Images, RotateCcw, ShieldCheck, SlidersHorizontal, Sparkles, Upload, X } from "lucide-react";
+import { Download, ImagePlus, Images, RotateCcw, ShieldCheck, SlidersHorizontal, Sparkles, Upload, X, ZoomIn, ZoomOut } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import demoAsset from "@/assets/orion-foguete-exemplo.png.asset.json";

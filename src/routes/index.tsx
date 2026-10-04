@@ -147,6 +147,10 @@ function BackgroundRemover() {
   }, []);
 
   useEffect(() => {
+    if (active) processImage(active, active.width === undefined);
+  }, [active?.id, active?.tolerance, active?.background.r, active?.background.g, active?.background.b, processImage]);
+
+  useEffect(() => {
     zoomRef.current = 1;
     setZoom(1);
     setOffset({ x: 0, y: 0 });

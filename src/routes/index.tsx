@@ -187,7 +187,8 @@ function BackgroundRemover() {
           <div className={`relative flex flex-1 items-center justify-center overflow-hidden p-6 md:p-10 ${view === "result" ? "transparency-grid" : "bg-elevated"}`}>
             {active ? (
               <div className="flex h-full max-h-[68vh] w-full items-center justify-center">
-                {view === "original" ? <img src={active.url} alt={`Imagem original: ${active.name}`} className="max-h-full max-w-full object-contain drop-shadow-2xl" /> : <canvas ref={canvasRef} aria-label={`Resultado sem fundo: ${active.name}`} className="max-h-full max-w-full object-contain drop-shadow-2xl" />}
+                <img src={active.url} alt={`Imagem original: ${active.name}`} className={`${view === "original" ? "block" : "hidden"} max-h-full max-w-full object-contain drop-shadow-2xl`} />
+                <canvas ref={canvasRef} aria-label={`Resultado sem fundo: ${active.name}`} className={`${view === "result" ? "block" : "hidden"} max-h-full max-w-full object-contain drop-shadow-2xl`} />
               </div>
             ) : (
               <button onClick={() => fileInputRef.current?.click()} className="flex flex-col items-center text-muted-foreground"><Images className="mb-4 size-10" /><span className="font-medium text-foreground">Importe uma imagem</span><span className="mt-1 text-sm">PNG, JPG ou WebP</span></button>
@@ -197,7 +198,7 @@ function BackgroundRemover() {
           <div className="flex h-10 items-center justify-between border-t border-border bg-card px-4 text-xs text-muted-foreground"><span className="flex items-center gap-2"><span className="size-1.5 rounded-full bg-success" />{status}</span><span className="font-mono">{active?.width ? `${active.width} × ${active.height} px` : "—"}</span></div>
         </section>
 
-        <aside className="order-3 border-t border-border bg-card lg:border-l lg:border-t-0">
+        <aside className="relative order-3 border-t border-border bg-card pb-32 lg:border-l lg:border-t-0">
           <div className="flex h-14 items-center gap-2 border-b border-border px-5"><SlidersHorizontal className="size-4 text-primary" /><h2 className="text-sm font-semibold">Ajustes</h2></div>
           <div className="space-y-7 p-5">
             <div><div className="mb-3 flex items-center justify-between"><label htmlFor="background-color" className="text-sm font-medium">Cor do fundo</label><span className="font-mono text-xs text-muted-foreground">{active ? toHex(active.background).toUpperCase() : "—"}</span></div><label className="flex h-11 cursor-pointer items-center gap-3 rounded-md border border-border bg-background px-3"><input id="background-color" type="color" value={active ? toHex(active.background) : "#ffffff"} disabled={!active} onChange={(event) => updateActive({ background: fromHex(event.target.value) })} className="size-6 cursor-pointer rounded border-0 bg-transparent p-0" /><span className="text-xs text-muted-foreground">Clique para alterar</span></label><p className="mt-2 text-xs leading-relaxed text-muted-foreground">Detectada automaticamente pelos cantos da imagem.</p></div>

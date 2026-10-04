@@ -264,7 +264,7 @@ function BackgroundRemover() {
           </div>
           <div className={`relative flex flex-1 items-center justify-center overflow-hidden p-6 md:p-10 ${view === "result" ? "transparency-grid" : "bg-elevated"}`}>
             {active ? (
-              <div className="flex h-full max-h-[68vh] w-full items-center justify-center">
+              <div ref={mediaRef} onPointerDown={onPanStart} onPointerMove={onPanMove} onPointerUp={onPanEnd} onPointerCancel={onPanEnd} onDoubleClick={() => applyZoom(1)} style={{ transform: `translate(${offset.x}px, ${offset.y}px) scale(${zoom})`, transformOrigin: "center center", touchAction: zoom > 1 ? "none" : "auto", cursor: zoom > 1 ? "grab" : undefined }} className={`flex h-full max-h-[68vh] w-full select-none items-center justify-center ${zoom > 1 ? "active:cursor-grabbing" : ""}`}>
                 <img src={active.url} alt={`Imagem original: ${active.name}`} className={`${view === "original" ? "block" : "hidden"} max-h-full max-w-full object-contain drop-shadow-2xl`} />
                 <canvas ref={canvasRef} aria-label={`Resultado sem fundo: ${active.name}`} className={`${view === "result" ? "block" : "hidden"} max-h-full max-w-full object-contain drop-shadow-2xl`} />
               </div>

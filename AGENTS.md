@@ -8,3 +8,5 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+- Image background removal runs entirely in the browser with Canvas so user files remain local and exports preserve original dimensions.

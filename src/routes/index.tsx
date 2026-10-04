@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Download, ImagePlus, Images, RotateCcw, ShieldCheck, SlidersHorizontal, Sparkles, Upload, X } from "lucide-react";
+import { Download, ImagePlus, Images, RotateCcw, ShieldCheck, SlidersHorizontal, Sparkles, Upload, X, ZoomIn, ZoomOut } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import demoAsset from "@/assets/orion-foguete-exemplo.png.asset.json";
@@ -72,7 +72,37 @@ function BackgroundRemover() {
   const [status, setStatus] = useState("Processando imagem...");
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const mediaRef = useRef<HTMLDivElement>(null);
+  const zoomRef = useRef(1);
+  const panState = useRef<{ x: number; y: number; offsetX: number; offsetY: number } | null>(null);
+  const [zoom, setZoom] = useState(1);
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
   const active = items.find((item) => item.id === activeId) ?? items[0];
+
+  const applyZoom = useCallback((next: number, anchor?: { clientX: number; clientY: number }) => {
+    const current = zoomRef.current;
+    const clamped = Math.min(8, Math.max(1, next));
+    if (clamped === current) return;
+    if (clamped === 1) {
+      zoomRef.current = 1;
+      setZoom(1);
+      setOffset({ x: 0, y: 0 });
+      return;
+    }
+    const media = mediaRef.current;
+    if (anchor && media) {
+      const rect = media.getBoundingClientRect();
+      const shiftX = (current - clamped) * (anchor.clientX - rect.left - rect.width / 2);
+      const shiftY = (current - clamped) * (anchor.clientY - rect.top - rect.height / 2);
+      setOffset((previous) => ({
+        x: Math.max(-rect.width, Math.min(rect.width, previous.x + shiftX)),
+        y: Math.max(-rect.height, Math.min(rect.height, previous.y + shiftY)),
+      }));
+    }
+    zoomRef.current = clamped;
+    setZoom(clamped);
+  }, []);
 
   const processImage = useCallback((item: ImageItem, detect = false) => {
     const canvas = canvasRef.current;
@@ -119,6 +149,42 @@ function BackgroundRemover() {
   useEffect(() => {
     if (active) processImage(active, active.width === undefined);
   }, [active?.id, active?.tolerance, active?.background.r, active?.background.g, active?.background.b, processImage]);
+
+  useEffect(() => {
+    zoomRef.current = 1;
+    setZoom(1);
+    setOffset({ x: 0, y: 0 });
+  }, [active?.id]);
+
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    const onWheel = (event: WheelEvent) => {
+      event.preventDefault();
+      const distance = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? 100 : 1);
+      applyZoom(zoomRef.current * Math.exp(-distance * 0.0015), { clientX: event.clientX, clientY: event.clientY });
+    };
+    stage.addEventListener("wheel", onWheel, { passive: false });
+    return () => stage.removeEventListener("wheel", onWheel);
+  }, [applyZoom]);
+
+  const onPanStart = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (zoomRef.current <= 1) return;
+    panState.current = { x: event.clientX, y: event.clientY, offsetX: offset.x, offsetY: offset.y };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const onPanMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    const state = panState.current;
+    if (!state) return;
+    setOffset({ x: state.offsetX + event.clientX - state.x, y: state.offsetY + event.clientY - state.y });
+  };
+
+  const onPanEnd = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!panState.current) return;
+    panState.current = null;
+    event.currentTarget.releasePointerCapture(event.pointerId);
+  };
 
   const importFiles = (files: FileList | File[]) => {
     const accepted = Array.from(files).filter((file) => ["image/png", "image/jpeg", "image/webp"].includes(file.type));
@@ -183,16 +249,22 @@ function BackgroundRemover() {
         </aside>
 
         <section className="order-1 flex min-h-[540px] min-w-0 flex-col bg-workspace lg:order-none" onDragEnter={(event) => { event.preventDefault(); setIsDragging(true); }} onDragOver={(event) => event.preventDefault()} onDragLeave={(event) => { if (event.currentTarget === event.target) setIsDragging(false); }} onDrop={(event) => { event.preventDefault(); setIsDragging(false); importFiles(event.dataTransfer.files); }}>
-          <div className="flex h-14 items-center justify-between border-b border-border px-4">
+          <div className="flex h-14 items-center justify-between gap-3 border-b border-border px-4">
             <div className="flex rounded-md bg-card p-1">
               <Button variant={view === "original" ? "secondary" : "ghost"} size="sm" onClick={() => setView("original")}>Original</Button>
               <Button variant={view === "result" ? "secondary" : "ghost"} size="sm" onClick={() => setView("result")}>Resultado</Button>
             </div>
-            <span className="flex items-center gap-1.5 text-xs text-muted-foreground"><ShieldCheck className="size-3.5 text-success" /> Processamento local</span>
+            <div className="flex shrink-0 items-center gap-1.5">
+              <Button variant="ghost" size="icon" className="size-8" aria-label="Diminuir zoom" disabled={zoom <= 1} onClick={() => applyZoom(zoom * 0.8)}><ZoomOut className="size-4" /></Button>
+              <Slider aria-label="Nível de zoom" min={100} max={800} step={10} value={[Math.round(zoom * 100)]} onValueChange={(values) => { const value = values[0]; if (value !== undefined) applyZoom(value / 100); }} className="w-20 sm:w-36" />
+              <Button variant="ghost" size="icon" className="size-8" aria-label="Aumentar zoom" disabled={zoom >= 8} onClick={() => applyZoom(zoom * 1.25)}><ZoomIn className="size-4" /></Button>
+              <button type="button" aria-label="Redefinir zoom" onClick={() => applyZoom(1)} className="hidden w-11 text-right font-mono text-xs text-muted-foreground transition-colors hover:text-foreground sm:block">{Math.round(zoom * 100)}%</button>
+            </div>
+            <span className="hidden shrink-0 items-center gap-1.5 text-xs text-muted-foreground lg:flex"><ShieldCheck className="size-3.5 text-success" /> Processamento local</span>
           </div>
-          <div className={`relative flex flex-1 items-center justify-center overflow-hidden p-6 md:p-10 ${view === "result" ? "transparency-grid" : "bg-elevated"}`}>
+          <div ref={stageRef} className={`relative flex flex-1 items-center justify-center overflow-hidden p-6 md:p-10 ${view === "result" ? "transparency-grid" : "bg-elevated"}`}>
             {active ? (
-              <div className="flex h-full max-h-[68vh] w-full items-center justify-center">
+              <div ref={mediaRef} onPointerDown={onPanStart} onPointerMove={onPanMove} onPointerUp={onPanEnd} onPointerCancel={onPanEnd} onDoubleClick={() => applyZoom(1)} style={{ transform: `translate(${offset.x}px, ${offset.y}px) scale(${zoom})`, transformOrigin: "center center", touchAction: zoom > 1 ? "none" : "auto", cursor: zoom > 1 ? "grab" : undefined }} className={`flex h-full max-h-[68vh] w-full select-none items-center justify-center ${zoom > 1 ? "active:cursor-grabbing" : ""}`}>
                 <img src={active.url} alt={`Imagem original: ${active.name}`} className={`${view === "original" ? "block" : "hidden"} max-h-full max-w-full object-contain drop-shadow-2xl`} />
                 <canvas ref={canvasRef} aria-label={`Resultado sem fundo: ${active.name}`} className={`${view === "result" ? "block" : "hidden"} max-h-full max-w-full object-contain drop-shadow-2xl`} />
               </div>

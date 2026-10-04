@@ -72,7 +72,37 @@ function BackgroundRemover() {
   const [status, setStatus] = useState("Processando imagem...");
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const mediaRef = useRef<HTMLDivElement>(null);
+  const zoomRef = useRef(1);
+  const panState = useRef<{ x: number; y: number; offsetX: number; offsetY: number } | null>(null);
+  const [zoom, setZoom] = useState(1);
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
   const active = items.find((item) => item.id === activeId) ?? items[0];
+
+  const applyZoom = useCallback((next: number, anchor?: { clientX: number; clientY: number }) => {
+    const current = zoomRef.current;
+    const clamped = Math.min(8, Math.max(1, next));
+    if (clamped === current) return;
+    if (clamped === 1) {
+      zoomRef.current = 1;
+      setZoom(1);
+      setOffset({ x: 0, y: 0 });
+      return;
+    }
+    const media = mediaRef.current;
+    if (anchor && media) {
+      const rect = media.getBoundingClientRect();
+      const shiftX = (current - clamped) * (anchor.clientX - rect.left - rect.width / 2);
+      const shiftY = (current - clamped) * (anchor.clientY - rect.top - rect.height / 2);
+      setOffset((previous) => ({
+        x: Math.max(-rect.width, Math.min(rect.width, previous.x + shiftX)),
+        y: Math.max(-rect.height, Math.min(rect.height, previous.y + shiftY)),
+      }));
+    }
+    zoomRef.current = clamped;
+    setZoom(clamped);
+  }, []);
 
   const processImage = useCallback((item: ImageItem, detect = false) => {
     const canvas = canvasRef.current;

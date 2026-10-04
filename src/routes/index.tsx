@@ -249,12 +249,18 @@ function BackgroundRemover() {
         </aside>
 
         <section className="order-1 flex min-h-[540px] min-w-0 flex-col bg-workspace lg:order-none" onDragEnter={(event) => { event.preventDefault(); setIsDragging(true); }} onDragOver={(event) => event.preventDefault()} onDragLeave={(event) => { if (event.currentTarget === event.target) setIsDragging(false); }} onDrop={(event) => { event.preventDefault(); setIsDragging(false); importFiles(event.dataTransfer.files); }}>
-          <div className="flex h-14 items-center justify-between border-b border-border px-4">
+          <div className="flex h-14 items-center justify-between gap-3 border-b border-border px-4">
             <div className="flex rounded-md bg-card p-1">
               <Button variant={view === "original" ? "secondary" : "ghost"} size="sm" onClick={() => setView("original")}>Original</Button>
               <Button variant={view === "result" ? "secondary" : "ghost"} size="sm" onClick={() => setView("result")}>Resultado</Button>
             </div>
-            <span className="flex items-center gap-1.5 text-xs text-muted-foreground"><ShieldCheck className="size-3.5 text-success" /> Processamento local</span>
+            <div className="flex shrink-0 items-center gap-1.5">
+              <Button variant="ghost" size="icon" className="size-8" aria-label="Diminuir zoom" disabled={zoom <= 1} onClick={() => applyZoom(zoom * 0.8)}><ZoomOut className="size-4" /></Button>
+              <Slider aria-label="Nível de zoom" min={100} max={800} step={10} value={[Math.round(zoom * 100)]} onValueChange={(values) => { const value = values[0]; if (value !== undefined) applyZoom(value / 100); }} className="w-20 sm:w-36" />
+              <Button variant="ghost" size="icon" className="size-8" aria-label="Aumentar zoom" disabled={zoom >= 8} onClick={() => applyZoom(zoom * 1.25)}><ZoomIn className="size-4" /></Button>
+              <button type="button" aria-label="Redefinir zoom" onClick={() => applyZoom(1)} className="hidden w-11 text-right font-mono text-xs text-muted-foreground transition-colors hover:text-foreground sm:block">{Math.round(zoom * 100)}%</button>
+            </div>
+            <span className="hidden shrink-0 items-center gap-1.5 text-xs text-muted-foreground lg:flex"><ShieldCheck className="size-3.5 text-success" /> Processamento local</span>
           </div>
           <div className={`relative flex flex-1 items-center justify-center overflow-hidden p-6 md:p-10 ${view === "result" ? "transparency-grid" : "bg-elevated"}`}>
             {active ? (

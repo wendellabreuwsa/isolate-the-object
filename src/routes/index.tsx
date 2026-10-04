@@ -147,8 +147,40 @@ function BackgroundRemover() {
   }, []);
 
   useEffect(() => {
-    if (active) processImage(active, active.width === undefined);
-  }, [active?.id, active?.tolerance, active?.background.r, active?.background.g, active?.background.b, processImage]);
+    zoomRef.current = 1;
+    setZoom(1);
+    setOffset({ x: 0, y: 0 });
+  }, [active?.id]);
+
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    const onWheel = (event: WheelEvent) => {
+      event.preventDefault();
+      const distance = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? 100 : 1);
+      applyZoom(zoomRef.current * Math.exp(-distance * 0.0015), { clientX: event.clientX, clientY: event.clientY });
+    };
+    stage.addEventListener("wheel", onWheel, { passive: false });
+    return () => stage.removeEventListener("wheel", onWheel);
+  }, [applyZoom]);
+
+  const onPanStart = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (zoomRef.current <= 1) return;
+    panState.current = { x: event.clientX, y: event.clientY, offsetX: offset.x, offsetY: offset.y };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const onPanMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    const state = panState.current;
+    if (!state) return;
+    setOffset({ x: state.offsetX + event.clientX - state.x, y: state.offsetY + event.clientY - state.y });
+  };
+
+  const onPanEnd = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!panState.current) return;
+    panState.current = null;
+    event.currentTarget.releasePointerCapture(event.pointerId);
+  };
 
   const importFiles = (files: FileList | File[]) => {
     const accepted = Array.from(files).filter((file) => ["image/png", "image/jpeg", "image/webp"].includes(file.type));
